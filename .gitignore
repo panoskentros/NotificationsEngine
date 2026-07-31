@@ -1,0 +1,56 @@
+# .NET Core / Visual Studio / Rider
+[Bb]in/
+[Oo]bj/
+[Bb]uild/
+[Ll]ogs/
+[Tt]emp/
+
+# Visual Studio files
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Rider / JetBrains files
+.idea/
+*.sln.iml
+
+# Visual Studio Code files
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Built application / publish output
+/[Pp]ublish/
+*.[Pp]ublish.xml
+*.publishproj
+
+# NuGet packages
+**/[Pp]ackages/*
+*.nupkg
+*.snupkg
+
+# Diagnostics / Profiler / Logs
+*.log
+*.lock
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# User-specific secrets & configuration overrides
+appsettings.Development.json
+appsettings.Local.json
+secrets.json

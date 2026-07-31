@@ -1,0 +1,233 @@
+@page "/web"
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@inject NotificationStateService NotificationState
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+<PageTitle>Web Dashboard Simulator</PageTitle>
+
+<MudPaper Elevation="4" Class="p-4 border-solid border-2 mud-border-secondary rounded-xl" Style="background: #ffffff; max-width: 700px; margin: 20px auto;">
+    <div class="d-flex align-center justify-space-between mb-3 px-2">
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.LaptopMac" Color="Color.Secondary" />
+        </div>
+    </div>
+
+    <MudDivider Class="mb-4" />
+
+    @if (_totalCount > 0)
+    {
+        <div class="d-flex justify-space-between align-center mb-3">
+            <MudText Typo="Typo.caption" Class="mud-text-secondary font-weight-bold">
+                Showing @_totalCount.ToString("N0")
+            </MudText>
+            <div class="d-flex align-center gap-2">
+                <MudMenu Label="@($"{_pageSize} / page")" Variant="Variant.Outlined" Size="Size.Small" Color="Color.Secondary">
+                    <MudMenuItem OnClick="@(() => ChangePageSizeAsync(20))">20</MudMenuItem>
+                    <MudMenuItem OnClick="@(() => ChangePageSizeAsync(50))">50</MudMenuItem>
+                    <MudMenuItem OnClick="@(() => ChangePageSizeAsync(100))">100</MudMenuItem>
+                    <MudMenuItem OnClick="@(() => ChangePageSizeAsync(500))">500</MudMenuItem>
+                </MudMenu>
+                <MudButton Variant="Variant.Outlined" Color="Color.Success" Size="Size.Small" StartIcon="@Icons.Material.Filled.DoneAll" OnClick="MarkAllAsRead">Mark All Read</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" StartIcon="@Icons.Material.Filled.DeleteSweep" OnClick="DeleteAll">Delete All</MudButton>
+            </div>
+        </div>
+    }
+
+    <div style="position: relative;">
+        <MudOverlay Visible="isLoading" DarkBackground="true" Absolute="true" ZIndex="10">
+            <MudProgressCircular Color="Color.Secondary" Indeterminate="true" Size="Size.Large" />
+        </MudOverlay>
+
+        <div style="height: 65vh; min-height: 300px; overflow-y: auto;" class="pr-1">
+            @if (_totalCount > 0 && _notifications.Any())
+            {
+                @if (_totalPages > 1)
+                {
+                    <div class="d-flex justify-center mt-4 mb-2">
+                        <MudPagination Color="Color.Secondary" Count="@_totalPages" Selected="@_currentPage" SelectedChanged="PageChangedAsync" />
+                    </div>
+                }
+                @foreach (var notification in _notifications)
+                {
+                    <MudCard @key="notification.Id" Elevation="2" Class="mb-3" Style="@(notification.IsRead ? "opacity: 0.6; border-left: 5px solid #9e9e9e;" : "border-left: 5px solid #776be7;")">
+                        <MudCardContent>
+                            <MudText Typo="Typo.subtitle2" Class="font-weight-bold">@notification.Title</MudText>
+                            <MudText Typo="Typo.body2" Class="mt-1">@notification.Message</MudText>
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary mt-2 d-block">@notification.CreatedAtUtc.ToLocalTime().ToString("g")</MudText>
+                        </MudCardContent>
+                        <MudCardActions Class="justify-space-between px-4 pb-3">
+                            @if (!notification.IsRead)
+                            {
+                                <MudButton Variant="Variant.Filled" Color="Color.Secondary" Size="Size.Small" OnClick="@(async () => await MarkAsRead(notification.Id))">Mark Read</MudButton>
+                            }
+                            <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small" OnClick="@(async () => await DeleteNotification(notification.Id))">Delete</MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                }
+            }
+            else if (!isLoading)
+            {
+                <div class="text-center py-10 mud-text-secondary" style="position: relative; width: 100%;">
+                    <MudText>No notifications found.</MudText>
+                </div>
+            }
+        </div>
+    </div>
+</MudPaper>
+
+@code {
+    private bool isLoading;
+    private int _currentPage = 1;
+    private int _pageSize = 100;
+    private int _totalPages = 1;
+    private int _totalCount = 0;
+    private IEnumerable<NotificationDto> _notifications = Array.Empty<NotificationDto>();
+
+    protected override void OnInitialized()
+    {
+        NotificationState.OnChange += OnStateChanged;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPageAsync();
+    }
+
+    private async Task ChangePageSizeAsync(int newSize)
+    {
+        _pageSize = newSize;
+        _currentPage = 1;
+        await LoadPageAsync();
+    }
+
+    private async Task LoadPageAsync()
+    {
+        try
+        {
+            isLoading = true;
+            await InvokeAsync(StateHasChanged);
+
+            var startIndex = (_currentPage - 1) * _pageSize;
+            var request = new ItemsProviderRequest(startIndex, _pageSize, default);
+            var result = await NotificationState.GetNotificationsProviderAsync(request);
+
+            _totalCount = result.TotalItemCount;
+
+            if (result.Items.Any() && _totalCount > 0)
+            {
+                _totalPages = (int)Math.Ceiling((double)_totalCount / _pageSize);
+                if (_totalPages < 1) _totalPages = 1;
+
+                if (_currentPage > _totalPages)
+                {
+                    _currentPage = _totalPages;
+                    startIndex = (_currentPage - 1) * _pageSize;
+                    request = new ItemsProviderRequest(startIndex, _pageSize, default);
+                    result = await NotificationState.GetNotificationsProviderAsync(request);
+                    _totalCount = result.TotalItemCount;
+                }
+
+                _notifications = result.Items.ToArray();
+            }
+            else
+            {
+                _notifications = Array.Empty<NotificationDto>();
+                _totalPages = 1;
+                _currentPage = 1;
+            }
+        }
+        catch
+        {
+            _notifications = Array.Empty<NotificationDto>();
+            _totalCount = 0;
+            _totalPages = 1;
+            _currentPage = 1;
+        }
+        finally
+        {
+            isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task PageChangedAsync(int page)
+    {
+        _currentPage = page;
+        await LoadPageAsync();
+    }
+
+    private void OnStateChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await LoadPageAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task MarkAsRead(Guid id)
+    {
+        try
+        {
+            isLoading = true;
+            await InvokeAsync(StateHasChanged);
+            await NotificationState.MarkAsReadAsync(id);
+        }
+        finally
+        {
+            isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task DeleteNotification(Guid id)
+    {
+        try
+        {
+            isLoading = true;
+            await InvokeAsync(StateHasChanged);
+            await NotificationState.DeleteNotificationAsync(id);
+        }
+        finally
+        {
+            isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task MarkAllAsRead()
+    {
+        try
+        {
+            isLoading = true;
+            await InvokeAsync(StateHasChanged);
+            await NotificationState.MarkAllAsReadAsync();
+        }
+        finally
+        {
+            isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task DeleteAll()
+    {
+        try
+        {
+            isLoading = true;
+            await InvokeAsync(StateHasChanged);
+            await NotificationState.DeleteAllAsync();
+        }
+        finally
+        {
+            isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public void Dispose()
+    {
+        NotificationState.OnChange -= OnStateChanged;
+    }
+}

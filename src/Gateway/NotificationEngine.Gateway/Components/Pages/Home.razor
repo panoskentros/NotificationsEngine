@@ -1,0 +1,80 @@
+﻿@page "/"
+@inject NotificationStateService NotificationState
+@inject ISnackbar Snackbar
+
+<PageTitle>Notification Control Center</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-8">
+    <div class="d-flex justify-center gap-4 mb-6">
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/mobile" Target="_blank" StartIcon="@Icons.Material.Filled.PhoneAndroid">Open Mobile View (New Tab)</MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/web" Target="_blank" StartIcon="@Icons.Material.Filled.LaptopMac">Open Web View (New Tab)</MudButton>
+    </div>
+
+    <MudPaper Elevation="4" Class="p-5 rounded-xl mb-4" Style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);">
+        <MudText Typo="Typo.h6" Class="font-weight-bold mb-3">Simulate Incoming RabbitMQ Event</MudText>
+        <MudGrid>
+            <MudItem xs="12" sm="5">
+                <MudTextField T="string" @bind-Value="_newTitle" Label="Title" Variant="Variant.Outlined" Margin="Margin.Dense" Style="background: white;" />
+            </MudItem>
+            <MudItem xs="12" sm="5">
+                <MudTextField T="string" @bind-Value="_newMessage" Label="Message" Variant="Variant.Outlined" Margin="Margin.Dense" Style="background: white;" />
+            </MudItem>
+            <MudItem xs="12" sm="2" Class="d-flex align-center">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" OnClick="PushNotification" Disabled="@isLoading">
+                    @if (isLoading)
+                    {
+                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                    }
+                    else
+                    {
+                        <MudText>Publish</MudText>
+                    }
+                </MudButton>
+            </MudItem>
+
+            <MudItem xs="12" Class="mt-2">
+                <MudSlider @bind-Value="_trafficCount" Min="1" Max="1000000" Step="1" Color="Color.Primary" Immediate="true">
+                    Traffic Volume: <strong>@_trafficCount.ToString("N0")</strong> message(s)
+                </MudSlider>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private string _newTitle = string.Empty;
+    private string _newMessage = string.Empty;
+    private int _trafficCount = 1;
+    private bool isLoading;
+
+    private async Task PushNotification()
+    {
+        if (string.IsNullOrWhiteSpace(_newTitle) || string.IsNullOrWhiteSpace(_newMessage))
+        {
+            Snackbar.Add("Title and Message cannot be empty.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            await NotificationState.CreateBulkNotificationsAsync(_newTitle.Trim(), _newMessage.Trim(), _trafficCount);
+            Snackbar.Add($"Successfully queued {_trafficCount:N0} message(s) to RabbitMQ!", Severity.Success);
+
+            _newTitle = string.Empty;
+            _newMessage = string.Empty;
+            _trafficCount = 1;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+}

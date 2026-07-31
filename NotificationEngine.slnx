@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Core/">
+    <Project Path="src/Core/NotificationEngine.Application/NotificationEngine.Application.csproj" />
+    <Project Path="src/Core/NotificationEngine.Domain/NotificationEngine.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Gateway/">
+    <Project Path="src/Gateway/NotificationEngine.Gateway/NotificationEngine.Gateway.csproj" />
+  </Folder>
+  <Folder Name="/src/Infrastructure/">
+    <Project Path="src/Infrastructure/NotificationEngine.Api/NotificationEngine.Api.csproj" />
+    <Project Path="src/Infrastructure/NotificationEngine.Infrastructure/NotificationEngine.Infrastructure.csproj" />
+  </Folder>
+</Solution>
